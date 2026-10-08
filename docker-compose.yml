@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql:latest
+    container_name: car-sharing-mysql
+    environment:
+      MYSQL_DATABASE: ${MYSQLDB_DATABASE:-car_sharing}
+      MYSQL_USER: ${MYSQLDB_USER:-root}
+      MYSQL_PASSWORD: ${MYSQLDB_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${MYSQLDB_ROOT_PASSWORD:-root}
+    ports:
+      - "${MYSQLDB_LOCAL_PORT:-3306}:${MYSQLDB_DOCKER_PORT:-3306}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
