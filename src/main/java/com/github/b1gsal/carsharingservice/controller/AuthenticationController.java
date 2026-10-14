@@ -1,9 +1,9 @@
 package com.github.b1gsal.carsharingservice.controller;
 
-import com.github.b1gsal.carsharingservice.dto.UserLoginRequestDto;
-import com.github.b1gsal.carsharingservice.dto.UserLoginResponseDto;
-import com.github.b1gsal.carsharingservice.dto.UserRegisterRequestDto;
-import com.github.b1gsal.carsharingservice.dto.UserResponseDto;
+import com.github.b1gsal.carsharingservice.dto.user.UserLoginRequestDto;
+import com.github.b1gsal.carsharingservice.dto.user.UserLoginResponseDto;
+import com.github.b1gsal.carsharingservice.dto.user.UserRegisterRequestDto;
+import com.github.b1gsal.carsharingservice.dto.user.UserResponseDto;
 import com.github.b1gsal.carsharingservice.security.AuthentificationService;
 import com.github.b1gsal.carsharingservice.service.user.UserService;
 import jakarta.validation.Valid;

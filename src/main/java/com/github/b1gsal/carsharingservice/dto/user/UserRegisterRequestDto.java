@@ -1,4 +1,4 @@
-package com.github.b1gsal.carsharingservice.dto;
+package com.github.b1gsal.carsharingservice.dto.user;
 
 import com.github.b1gsal.carsharingservice.validation.FieldMatch;
 import jakarta.validation.constraints.Email;
