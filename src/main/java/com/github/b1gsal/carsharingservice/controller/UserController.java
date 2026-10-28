@@ -34,7 +34,7 @@ public class UserController {
     @PutMapping("/{id}/role")
     public UserResponseWithRoleDto updateRoleInUser(
             @PathVariable Long id,
-            @RequestBody RoleNameDto roleNameDto) {
+            @RequestBody @Valid RoleNameDto roleNameDto) {
         return userService.updateRole(id, roleNameDto);
     }
 

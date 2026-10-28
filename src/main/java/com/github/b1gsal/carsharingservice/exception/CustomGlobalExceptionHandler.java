@@ -34,7 +34,7 @@ public class CustomGlobalExceptionHandler {
     }
 
     @ExceptionHandler(RegistrationException.class)
-    public ResponseEntity<String> handleRegistrationExceptionHandler(
+    public ResponseEntity<String> handleRegistrationException(
             RegistrationException exception) {
         return new ResponseEntity<>(exception.getMessage(),
                 HttpStatus.CONFLICT);
@@ -45,5 +45,19 @@ public class CustomGlobalExceptionHandler {
             BadCredentialsException exception) {
         return new ResponseEntity<>("Invalid email or password",
                 HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(RentalException.class)
+    public ResponseEntity<String> handleRentalException(
+            RentalException exception) {
+        return new ResponseEntity<>(exception.getMessage(),
+                HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgumentException(
+            IllegalArgumentException exception) {
+        return new ResponseEntity<>(exception.getMessage(),
+                HttpStatus.BAD_REQUEST);
     }
 }
