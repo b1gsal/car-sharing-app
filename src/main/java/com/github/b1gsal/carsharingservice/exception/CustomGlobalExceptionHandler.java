@@ -60,4 +60,11 @@ public class CustomGlobalExceptionHandler {
         return new ResponseEntity<>(exception.getMessage(),
                 HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(PaymentException.class)
+    public ResponseEntity<String> handlePaymentException(
+            PaymentException exception) {
+        return new ResponseEntity<>(exception.getMessage(),
+                HttpStatus.BAD_REQUEST);
+    }
 }
