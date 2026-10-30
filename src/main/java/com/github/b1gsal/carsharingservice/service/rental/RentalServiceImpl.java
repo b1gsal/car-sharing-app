@@ -6,10 +6,12 @@ import com.github.b1gsal.carsharingservice.exception.EntityNotFoundException;
 import com.github.b1gsal.carsharingservice.exception.RentalException;
 import com.github.b1gsal.carsharingservice.mapper.RentalMapper;
 import com.github.b1gsal.carsharingservice.model.Car;
+import com.github.b1gsal.carsharingservice.model.Payment;
 import com.github.b1gsal.carsharingservice.model.Rental;
 import com.github.b1gsal.carsharingservice.model.RoleName;
 import com.github.b1gsal.carsharingservice.model.User;
 import com.github.b1gsal.carsharingservice.repository.car.CarRepository;
+import com.github.b1gsal.carsharingservice.repository.payment.PaymentRepository;
 import com.github.b1gsal.carsharingservice.repository.rental.RentalRepository;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +27,16 @@ public class RentalServiceImpl implements RentalService {
     private final CarRepository carRepository;
     private final RentalMapper rentalMapper;
     private final RentalRepository rentalRepository;
+    private final PaymentRepository paymentRepository;
 
     @Transactional
     @Override
     public RentalResponseDto rentCar(RentalRequestDto requestDto, Authentication authentication) {
         User user = (User) authentication.getPrincipal();
+        if (paymentRepository.existsByRentalUserIdAndStatus(user.getId(), Payment.Status.PENDING)) {
+            throw new RentalException("You have unpaid pending payments."
+                    + " Please complete them before renting again.");
+        }
         Car car = carRepository.findById(requestDto.carId()).orElseThrow(
                 () -> new EntityNotFoundException("Invalid car's id " + requestDto.carId()));
 
@@ -69,6 +76,12 @@ public class RentalServiceImpl implements RentalService {
 
         if (rental.getActualReturnDate() != null) {
             throw new RentalException("This rental has already returned");
+        }
+
+        boolean isPaid = paymentRepository.existsByRentalIdAndTypeAndStatus(
+                rental.getId(), Payment.Type.PAYMENT, Payment.Status.PAID);
+        if (!isPaid) {
+            throw new RentalException("Cannot return rental: initial payment is not completed");
         }
 
         Car car = rental.getCar();
