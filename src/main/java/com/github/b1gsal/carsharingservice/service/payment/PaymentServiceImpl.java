@@ -11,6 +11,7 @@ import com.github.b1gsal.carsharingservice.model.RoleName;
 import com.github.b1gsal.carsharingservice.model.User;
 import com.github.b1gsal.carsharingservice.repository.payment.PaymentRepository;
 import com.github.b1gsal.carsharingservice.repository.rental.RentalRepository;
+import com.github.b1gsal.carsharingservice.service.notification.NotificationService;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
+    private final NotificationService notificationService;
 
     @Value("${payment.stripe.key}")
     private String key;
@@ -105,7 +107,9 @@ public class PaymentServiceImpl implements PaymentService {
             Session session = Session.retrieve(sessionId);
             if ("paid".equalsIgnoreCase(session.getPaymentStatus())) {
                 payment.setStatus(Payment.Status.PAID);
-                return paymentMapper.toDto(paymentRepository.save(payment));
+                Payment savedPayment = paymentRepository.save(payment);
+                notificationService.notifyPaymentSuccess(savedPayment);
+                return paymentMapper.toDto(savedPayment);
             }
             throw new PaymentException("Payment hasn't been completed on Stripe side");
         } catch (StripeException e) {

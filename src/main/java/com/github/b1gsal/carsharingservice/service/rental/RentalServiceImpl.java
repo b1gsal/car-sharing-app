@@ -13,6 +13,7 @@ import com.github.b1gsal.carsharingservice.model.User;
 import com.github.b1gsal.carsharingservice.repository.car.CarRepository;
 import com.github.b1gsal.carsharingservice.repository.payment.PaymentRepository;
 import com.github.b1gsal.carsharingservice.repository.rental.RentalRepository;
+import com.github.b1gsal.carsharingservice.service.notification.NotificationService;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,7 @@ public class RentalServiceImpl implements RentalService {
     private final RentalMapper rentalMapper;
     private final RentalRepository rentalRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     @Override
@@ -56,6 +58,7 @@ public class RentalServiceImpl implements RentalService {
         model.setRentalDate(LocalDate.now());
 
         Rental savedRental = rentalRepository.save(model);
+        notificationService.notifyRentalCreated(savedRental);
         return rentalMapper.toDto(savedRental);
     }
 
@@ -121,12 +124,12 @@ public class RentalServiceImpl implements RentalService {
             Boolean isActive,
             Pageable pageable,
             Authentication authentication) {
-        User curentUser = (User) authentication.getPrincipal();
-        boolean isManager = curentUser.getAuthorities().stream()
+        User currentUser = (User) authentication.getPrincipal();
+        boolean isManager = currentUser.getAuthorities().stream()
                 .anyMatch(role -> role.getAuthority()
                         .equals(RoleName.ROLE_MANAGER.name()));
 
-        Long actualUserId = isManager ? userId : curentUser.getId();
+        Long actualUserId = isManager ? userId : currentUser.getId();
 
         Page<Rental> rentalPage;
         if (actualUserId != null) {
