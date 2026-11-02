@@ -18,6 +18,7 @@ import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @RequiredArgsConstructor
 @Service
@@ -39,6 +41,8 @@ public class PaymentServiceImpl implements PaymentService {
     private String key;
     @Value("${payment.fine.multiplier}")
     private BigDecimal fineMultiplier;
+    @Value("${payment.domain.url}")
+    private String domainUrl;
 
     private final RentalRepository rentalRepository;
 
@@ -60,6 +64,12 @@ public class PaymentServiceImpl implements PaymentService {
                 requestDto.rentalId(), requestDto.type(), Payment.Status.PENDING);
         if (pendingPayment.isPresent()) {
             return paymentMapper.toDto(pendingPayment.get());
+        }
+
+        Optional<Payment> expiredPayment = paymentRepository.findByRentalIdAndTypeAndStatus(
+                requestDto.rentalId(), requestDto.type(), Payment.Status.EXPIRED);
+        if (expiredPayment.isPresent()) {
+            return renewPayment(expiredPayment.get().getId(), authentication);
         }
 
         User currentUser = (User) authentication.getPrincipal();
@@ -133,6 +143,66 @@ public class PaymentServiceImpl implements PaymentService {
         return payments.map(paymentMapper::toDto);
     }
 
+    @Transactional
+    @Override
+    public void checkAndUpdateStatus(Payment payment) {
+        try {
+            Session session = Session.retrieve(payment.getSessionId());
+
+            if ("paid".equalsIgnoreCase(session.getPaymentStatus())) {
+                payment.setStatus(Payment.Status.PAID);
+                Payment savedPayment = paymentRepository.save(payment);
+                notificationService.notifyPaymentSuccess(savedPayment);
+                return;
+            }
+
+            paymentRepository.updateStatus(payment.getId(), Payment.Status.EXPIRED);
+        } catch (StripeException e) {
+            System.err.println("Can't verify stripe session for payment with id "
+                    + payment.getId() + ": " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    @Override
+    public PaymentResponseDto renewPayment(Long id, Authentication authentication) {
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Can't find payment with id " + id));
+
+        User currentUser = (User) authentication.getPrincipal();
+        boolean isManager = currentUser.getAuthorities()
+                .stream().anyMatch(role ->
+                        role.getAuthority().equals(RoleName.ROLE_MANAGER.name()));
+
+        if (!isManager && !payment.getRental().getUser().getId().equals(currentUser.getId())) {
+            throw new PaymentException("You don't have permission to renew this payment");
+        }
+
+        if (payment.getStatus() != Payment.Status.EXPIRED) {
+            throw new PaymentException("Only payments with EXPIRED status can be renewed. "
+                    + "Current status: " + payment.getStatus());
+        }
+
+        try {
+            Session newSession = createStripeSession(
+                    payment.getRental(),
+                    payment.getAmountToPay(),
+                    payment.getType()
+            );
+
+            payment.setSessionId(newSession.getId());
+            payment.setSessionUrl(newSession.getUrl());
+            payment.setStatus(Payment.Status.PENDING);
+            payment.setCreatedAt(LocalDateTime.now());
+
+            Payment updatedPayment = paymentRepository.save(payment);
+            return paymentMapper.toDto(updatedPayment);
+        } catch (StripeException e) {
+            throw new PaymentException("Failed to renew Stripe payment"
+                    + " session for payment id " + id);
+        }
+    }
+
     private Session createStripeSession(Rental rental, BigDecimal amountToPay, Payment.Type type)
             throws StripeException {
         long centsAmount = amountToPay.multiply(BigDecimal.valueOf(100)).longValue();
@@ -150,11 +220,22 @@ public class PaymentServiceImpl implements PaymentService {
                         .setUnitAmount(centsAmount)
                         .setProductData(productData).build();
 
+        String successUrl = UriComponentsBuilder.fromUriString(domainUrl)
+                .path("/payments/success")
+                .queryParam("session_id", "{CHECKOUT_SESSION_ID}")
+                .build(false)
+                .toUriString();
+
+        String cancelUrl = UriComponentsBuilder.fromUriString(domainUrl)
+                .path("/payments/cancel")
+                .build(false)
+                .toUriString();
+
         SessionCreateParams params = SessionCreateParams.builder()
                 .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl("http://localhost:8080/payments/success?session_id={CHECKOUT_SESSION_ID}")
-                .setCancelUrl("http://localhost:8080/payments/cancel")
+                .setSuccessUrl(successUrl)
+                .setCancelUrl(cancelUrl)
                 .addLineItem(
                         SessionCreateParams.LineItem.builder()
                                 .setQuantity(1L)
