@@ -43,4 +43,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     @EntityGraph(attributePaths = {"rental", "rental.user"})
     Optional<Payment> findById(Long id);
+
+    Optional<Payment> findFirstByRentalIdAndTypeAndStatusOrderByCreatedAtDesc(
+            Long rentalId, Payment.Type type, Payment.Status status);
 }
