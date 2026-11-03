@@ -60,14 +60,16 @@ public class PaymentServiceImpl implements PaymentService {
             throw new PaymentException("Payment for this rental has already been completed");
         }
 
-        Optional<Payment> pendingPayment = paymentRepository.findByRentalIdAndTypeAndStatus(
-                requestDto.rentalId(), requestDto.type(), Payment.Status.PENDING);
+        Optional<Payment> pendingPayment = paymentRepository
+                .findFirstByRentalIdAndTypeAndStatusOrderByCreatedAtDesc(
+                        requestDto.rentalId(), requestDto.type(), Payment.Status.PENDING);
         if (pendingPayment.isPresent()) {
             return paymentMapper.toDto(pendingPayment.get());
         }
 
-        Optional<Payment> expiredPayment = paymentRepository.findByRentalIdAndTypeAndStatus(
-                requestDto.rentalId(), requestDto.type(), Payment.Status.EXPIRED);
+        Optional<Payment> expiredPayment = paymentRepository
+                .findFirstByRentalIdAndTypeAndStatusOrderByCreatedAtDesc(
+                        requestDto.rentalId(), requestDto.type(), Payment.Status.EXPIRED);
         if (expiredPayment.isPresent()) {
             return renewPayment(expiredPayment.get().getId(), authentication);
         }

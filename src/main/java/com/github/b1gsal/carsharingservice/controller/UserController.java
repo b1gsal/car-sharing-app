@@ -5,6 +5,8 @@ import com.github.b1gsal.carsharingservice.dto.user.UserResponseDto;
 import com.github.b1gsal.carsharingservice.dto.user.UserResponseWithRoleDto;
 import com.github.b1gsal.carsharingservice.dto.user.UserUpdateDto;
 import com.github.b1gsal.carsharingservice.service.user.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,19 +19,24 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "User Management",
+        description = "Endpoints for user profiles and roles management")
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/users")
 public class UserController {
     private final UserService userService;
 
+    @Operation(summary = "Get current user profile",
+            description = "Retrieves profile information for the authenticated user")
     @PreAuthorize("hasAnyRole('MANAGER', 'CUSTOMER')")
     @GetMapping("/me")
-    public UserResponseDto getProfileInfo(
-            Authentication authentication) {
+    public UserResponseDto getProfileInfo(Authentication authentication) {
         return userService.getProfileInfo(authentication);
     }
 
+    @Operation(summary = "Update user role",
+            description = "Changes role assigned to a user (Manager only)")
     @PreAuthorize("hasRole('MANAGER')")
     @PutMapping("/{id}/role")
     public UserResponseWithRoleDto updateRoleInUser(
@@ -38,6 +45,8 @@ public class UserController {
         return userService.updateRole(id, roleNameDto);
     }
 
+    @Operation(summary = "Update current user profile",
+            description = "Updates profile details for the authenticated user")
     @PreAuthorize("hasAnyRole('MANAGER', 'CUSTOMER')")
     @RequestMapping(value = "/me", method = {RequestMethod.PATCH, RequestMethod.PUT})
     public UserResponseDto updateProfileInfo(

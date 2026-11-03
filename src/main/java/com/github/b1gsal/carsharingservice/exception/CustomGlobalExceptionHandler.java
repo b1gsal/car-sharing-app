@@ -2,6 +2,8 @@ package com.github.b1gsal.carsharingservice.exception;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -66,5 +68,13 @@ public class CustomGlobalExceptionHandler {
             PaymentException exception) {
         return new ResponseEntity<>(exception.getMessage(),
                 HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({
+            InvalidDataAccessApiUsageException.class,
+            PropertyReferenceException.class
+    })
+    public ResponseEntity<String> handleInvalidSortException(Exception exception) {
+        return new ResponseEntity<>("Invalid sort property provided", HttpStatus.BAD_REQUEST);
     }
 }
