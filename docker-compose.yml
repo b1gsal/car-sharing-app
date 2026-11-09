@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:latest
+    image: mysql:8.0.33
     container_name: car-sharing-mysql
     environment:
       MYSQL_DATABASE: ${MYSQLDB_DATABASE:-car_sharing}
@@ -8,7 +8,7 @@ services:
       MYSQL_PASSWORD: ${MYSQLDB_PASSWORD:-root}
       MYSQL_ROOT_PASSWORD: ${MYSQLDB_ROOT_PASSWORD:-root}
     ports:
-      - "${MYSQLDB_LOCAL_PORT:-3306}:${MYSQLDB_DOCKER_PORT:-3306}"
+      - "${MYSQLDB_LOCAL_PORT:-3307}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -16,6 +16,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  app:
+    build: .
+    container_name: car-sharing-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQLDB_DATABASE:-car_sharing}?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQLDB_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQLDB_PASSWORD:-root}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+    depends_on:
+      mysql:
+        condition: service_healthy
 
 volumes:
   mysql_data:
